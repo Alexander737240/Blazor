@@ -1,0 +1,10 @@
+﻿.Factorial{
+    display:flex;
+    font-size:24px;
+}
+.factorial-result {
+    margin:0 24px;
+}
+,.factorial > input {
+    width:5%;
+}
