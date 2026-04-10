@@ -1,0 +1,15 @@
+﻿@page "/Fibonacci"
+@rendermode InteractiveServer
+
+<PageTitle>Fibonacci</PageTitle>
+
+<h3>Вычислить ряд Фибоначчи</h3>
+
+<input type="number" @bind="count" min="1" />
+<button @onclick="GenerateFibonacci">Посчитать</button>
+<ul>
+    @foreach (var n in fibonacciNumbers)
+    {
+        <li>@n</li>
+    }
+</ul>

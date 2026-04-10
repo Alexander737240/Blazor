@@ -1,0 +1,22 @@
+﻿@page "/Power"
+@rendermode InteractiveServer
+
+<PageTitle>Power</PageTitle>
+
+<h3>Введите число и степень для возведени</h3>
+
+<div class="container">
+    <div class="input-group">
+        <span>Введите число</span>
+        <input type="number" min="0" @bind="num"/>
+    </div>
+    <div class="input-group">
+        <span>Введите степень</span>
+        <input type="number" min="0" @bind="pow"/>
+    </div>
+</div>
+
+<button @onclick="Calculate">Calculate</button>
+
+<div class="result">Результат:@result</div>
+
