@@ -4,7 +4,7 @@
 
 
 <h3>TODO</h3>
-<input placeholder="Новая задача" @bind="task"/>
+<input placeholder="Новая задача" @bind="task" @onkeyup="Enter" />
 <button @onclick="AddTask">Добавить</button>
 <ul class="tasklist">
     @foreach(TODOitem i in tasklist)
@@ -26,5 +26,9 @@
             tasklist.Add(new TODOitem { Title = task });
             task = "";
         }
+    }
+    void Enter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") AddTask();
     }
 }
