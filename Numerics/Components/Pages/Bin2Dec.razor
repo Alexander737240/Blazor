@@ -1,0 +1,55 @@
+﻿@page "/Bin2Dec"
+@rendermode InteractiveServer
+<PageTitle>Dec2</PageTitle>
+
+<h3>Преобразование двоичного числа в десятичное</h3>
+
+<div>
+    <label>Введите двоичное число:</label>
+    <input type="number" min="0" @bind="binaryInput" />
+    <button @onclick="ConvertToBinary">Посчитать</button>
+</div>
+
+<label>Результат:@decimalResult</label>
+
+@code {
+    string binaryInput = "";       
+    string decimalResult = "";     
+
+    void ConvertToBinary()
+    {
+        
+        if (string.IsNullOrWhiteSpace(binaryInput))
+        {
+            decimalResult = "Пожалуйста, введите двоичное число";
+            return;
+        }
+
+        if (!IsBinary(binaryInput))
+        {
+            decimalResult = "Некорректное двоичное число";
+            return;
+        }
+
+        try
+        {
+            int decimalNumber = Convert.ToInt32(binaryInput, 2);
+            decimalResult = decimalNumber.ToString();
+        }
+        catch
+        {
+            decimalResult = "Ошибка при преобразовании";
+        }
+    }
+
+    bool IsBinary(string input)
+    {
+        foreach (char c in input)
+        {
+            if (c != '0' && c != '1')
+                return false;
+        }
+        return true;
+    }
+}
+

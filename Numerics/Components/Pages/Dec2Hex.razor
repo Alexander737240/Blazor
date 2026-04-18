@@ -1,0 +1,23 @@
+﻿@page "/Dec2Hex"
+@rendermode InteractiveServer
+<PageTitle>Dec2</PageTitle>
+
+<h3>Преобразование десятичного числа в шестнадцатеричное</h3>
+
+<div>
+    <label>Введите десятичное число:</label>
+    <input type="number" min="0" @bind="decimalNumber" />
+    <button @onclick="ConvertToHex">Посчитать</button>
+</div>
+
+<label>Результат:@hexResult</label>
+
+@code {
+    int decimalNumber = 0;
+    string hexResult = "";
+
+    void ConvertToHex()
+    {
+        hexResult = Convert.ToString(decimalNumber, 16);
+    }
+}

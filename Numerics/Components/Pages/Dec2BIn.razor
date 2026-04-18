@@ -1,0 +1,23 @@
+﻿@page "/Dec2Bin"
+@rendermode InteractiveServer
+<PageTitle>Dec2Bin</PageTitle>
+
+<h3>Преобразование десятичного числа в двоичное</h3>
+
+<div>
+    <label>Введите десятичное число:</label>
+    <input type="number" min="0" @bind="decimalNumber" />
+    <button @onclick="ConvertToBinary">Посчитать</button>
+</div>
+
+<label>Результат:@binaryResult</label>
+
+@code {
+    int decimalNumber = 0;           
+    string binaryResult = "";        
+
+    void ConvertToBinary()
+    {
+        binaryResult = Convert.ToString(decimalNumber, 2);
+    }
+}
