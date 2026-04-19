@@ -2,38 +2,52 @@
 @rendermode InteractiveServer
 <PageTitle>TODO</PageTitle>
 
-
 <h3>TODO</h3>
 <div class="statistics">
     <h5>Всего заданий: @tasklist.Count</h5>
-    <h5>Выполненных заданий: @tasklist.Where(t => t.DONE==true).ToList().Count</h5>
-    <h5>Осталось заданий: @tasklist.Where(t => t.DONE==false).ToList().Count</h5>
+    <h5>Выполненных заданий: @tasklist.Where(t => t.DONE).ToList().Count</h5>
+    <h5>Осталось заданий: @tasklist.Where(t => !t.DONE).ToList().Count</h5>
 </div>
 <input placeholder="Новая задача" @bind="task" @onkeyup="Enter" />
 <button @onclick="AddTask">Добавить</button>
+<button @onclick="ClearAll">Удалить все задачи</button>
+
 <ul class="tasklist">
-    @foreach(TODOitem i in tasklist)
+    @foreach (TODOitem i in tasklist)
     {
         <li>
-            <input type="checkbox" @bind="@i.DONE" id="@i.Title"/>
+            <input type="checkbox" @bind="@i.DONE" id="@i.Title" />
             <label for="@i.Title" class=@(i.DONE ? "done" : "")>@i.Title</label>
+            <button class="delete" @onclick="@(() => DeleteTask(i))">Удалить задачу</button>
         </li>
     }
 </ul>
 
 @code {
-    List<TODOitem> tasklist = [];
+    List<TODOitem> tasklist = new();
     string task;
+
     void AddTask()
     {
-        if(!string.IsNullOrWhiteSpace(task) && !tasklist.Contains(new TODOitem{Title = task}))
+        if (!string.IsNullOrWhiteSpace(task) && !tasklist.Any(t => t.Title == task))
         {
             tasklist.Add(new TODOitem { Title = task });
             task = "";
         }
     }
+
     void Enter(KeyboardEventArgs e)
     {
         if (e.Key == "Enter") AddTask();
+    }
+
+    void DeleteTask(TODOitem item)
+    {
+        tasklist.Remove(item);
+    }
+
+    void ClearAll()
+    {
+        tasklist.Clear();
     }
 }
