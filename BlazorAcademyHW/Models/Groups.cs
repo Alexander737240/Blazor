@@ -8,6 +8,6 @@ namespace BlazorAcademyHW.Models
 
         public string? group_name { get; set; }
 
-        public short ? direction { get; set; }
+        public byte ? direction { get; set; }
     }
 }
