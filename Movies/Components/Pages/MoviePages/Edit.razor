@@ -21,7 +21,7 @@ else
             <EditForm method="post" Model="Movie" OnValidSubmit="UpdateMovie" FormName="edit" Enhance>
                 <DataAnnotationsValidator />
                 <ValidationSummary role="alert"/>
-                <input type="hidden" name="Movie.id" value="@Movie.id" />
+                <input type="hidden" name="Movie.Id" value="@Movie.Id" />
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="title" class="form-label">Title:</label>
@@ -60,7 +60,7 @@ else
 
 @code {
     [SupplyParameterFromQuery]
-    private int id { get; set; }
+    private int Id { get; set; }
 
     [SupplyParameterFromForm]
     private Movie? Movie { get; set; }
@@ -68,7 +68,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
-        Movie ??= await context.Movie.FirstOrDefaultAsync(m => m.id == id);
+        Movie ??= await context.Movie.FirstOrDefaultAsync(m => m.Id == Id);
 
         if (Movie is null)
         {
@@ -89,7 +89,7 @@ else
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!MovieExists(Movie!.id))
+            if (!MovieExists(Movie!.Id))
             {
                 NavigationManager.NotFound();
             }
@@ -99,12 +99,12 @@ else
             }
         }
 
-        NavigationManager.NavigateTo($"/movies/details?id={Movie.id}");
+        NavigationManager.NavigateTo($"/movies/details?id={Movie.Id}");
     }
 
     private bool MovieExists(int id)
     {
         using var context = DbFactory.CreateDbContext();
-        return context.Movie.Any(e => e.id == id);
+        return context.Movie.Any(e => e.Id == id);
     }
 }
