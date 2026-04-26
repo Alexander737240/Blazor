@@ -1,12 +1,10 @@
-﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace BlazorAcademyHW.Models
 {
-    public class Students
+    public class Teachers
     {
-        
-       [Key] public int stud_id { get; set; }
+        [Key] public short teacher_id { get; set; }
 
         public string? last_name { get; set; }
 
@@ -16,7 +14,8 @@ namespace BlazorAcademyHW.Models
 
         public DateOnly? birth_date { get; set; }
 
-        public int group { get; set; }
+        public DateOnly? work_since { get; set; }
 
+        public decimal? rate { get; set; }
     }
 }
