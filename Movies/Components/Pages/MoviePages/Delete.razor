@@ -40,12 +40,12 @@
     private Movie? movie;
 
     [SupplyParameterFromQuery]
-    private int Id { get; set; }
+    private int id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
-        movie = await context.Movie.FirstOrDefaultAsync(m => m.Id == Id);
+        movie = await context.Movie.FirstOrDefaultAsync(m => m.id == id);
 
         if (movie is null)
         {

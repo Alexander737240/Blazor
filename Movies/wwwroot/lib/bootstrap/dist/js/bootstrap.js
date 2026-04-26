@@ -115,7 +115,7 @@
   const getUID = prefix => {
     do {
       prefix += Math.floor(Math.random() * MAX_UID);
-    } while (document.getElementById(prefix));
+    } while (document.getElementByid(prefix));
     return prefix;
   };
   const getTransitionDurationFromElement = element => {
@@ -3415,8 +3415,8 @@
       tip.classList.remove(CLASS_NAME_FADE$2, CLASS_NAME_SHOW$2);
       // TODO: v6 the following can be achieved with CSS only
       tip.classList.add(`bs-${this.constructor.NAME}-auto`);
-      const tipId = getUID(this.constructor.NAME).toString();
-      tip.setAttribute('id', tipId);
+      const tipid = getUID(this.constructor.NAME).toString();
+      tip.setAttribute('id', tipid);
       if (this._isAnimated()) {
         tip.classList.add(CLASS_NAME_FADE$2);
       }

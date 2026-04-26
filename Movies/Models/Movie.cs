@@ -4,7 +4,7 @@ namespace Movies.Models
 {
     public class Movie
     {
-        public int Id { get; set; }
+        public int id { get; set; }
 
         [Required]
         [StringLength(50, MinimumLength = 2)]

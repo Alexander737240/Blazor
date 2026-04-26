@@ -21,17 +21,17 @@ namespace Movies.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.2")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxidentifierLength", 128);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            SqlServerModelBuilderExtensions.UseidentityColumns(modelBuilder);
 
             modelBuilder.Entity("Movies.Models.Movie", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseidentityColumn(b.Property<int>("id"));
 
                     b.Property<string>("Genre")
                         .HasColumnType("nvarchar(max)");
@@ -50,7 +50,7 @@ namespace Movies.Migrations
                     b.Property<string>("URL")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Id");
+                    b.HasKey("id");
 
                     b.ToTable("Movie");
                 });
