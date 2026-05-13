@@ -4,6 +4,7 @@ using BlazorAcademyHW.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorAcademyHW.Migrations
 {
     [DbContext(typeof(BlazorAcademyHWContext))]
-    partial class BlazorAcademyHWContextModelSnapshot : ModelSnapshot
+    [Migration("20260513082412_mssql.local_migration_569")]
+    partial class mssqllocal_migration_569
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

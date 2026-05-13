@@ -1,94 +1,161 @@
-﻿@page "/groups/edit"
+﻿@page "/groups/edit/{group_id:int}"
+@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using BlazorAcademyHW.Models
+@using BlazorAcademyHW.Data
 @inject IDbContextFactory<BlazorAcademyHW.Data.BlazorAcademyHWContext> DbFactory
-@inject NavigationManager NavigationManager
+@inject NavigationManager Navigation
 
-<PageTitle>Edit</PageTitle>
+<PageTitle>Редактирование группы</PageTitle>
 
-<h1>Edit</h1>
+<h1>Редактирование группы</h1>
 
-<h2>Groups</h2>
-<hr />
-@if (Groups is null)
+<div style="margin-bottom: 20px;">
+    <a href="/groups">Назад к списку</a>
+</div>
+
+<div>
+    <p>ID группы из URL: @group_id</p>
+</div>
+
+@if (isLoading)
 {
-    <p><em>Loading...</em></p>
+    <div>Загрузка...</div>
+}
+else if (group == null)
+{
+    <div style="color: red;">Группа с ID @group_id не найдена</div>
 }
 else
 {
-    <div class="row">
-        <div class="col-md-4">
-            <EditForm method="post" Model="Groups" OnValidSubmit="UpdateGroups" FormName="edit" Enhance>
-                <DataAnnotationsValidator />
-                <ValidationSummary role="alert"/>
-                <input type="hidden" name="Groups.group_id" value="@Groups.group_id" />
-                <div class="mb-3">
-                    <label for="group_name" class="form-label">group_name:</label>
-                    <InputText id="group_name" @bind-Value="Groups.group_name" class="form-control" />
-                    <ValidationMessage For="() => Groups.group_name" class="text-danger" />
-                </div>
-                <div class="mb-3">
-                    <label for="direction" class="form-label">direction:</label>
-                    <InputNumber id="direction" @bind-Value="Groups.direction" class="form-control" />
-                    <ValidationMessage For="() => Groups.direction" class="text-danger" />
-                </div>
-                <button type="submit" class="btn btn-primary">Save</button>
-            </EditForm>
+    <div style="width: 500px;">
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Название группы:</label>
+            <input @bind="group.group_name" style="width: 100%; padding: 8px;" />
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Направление обучения:</label>
+            <select @bind="selectedDisciplineId" style="width: 100%; padding: 8px;">
+                <option value="">-- Не выбрано --</option>
+                @foreach (var discipline in disciplines)
+                {
+                    <option value="@discipline.discipline_id">@discipline.discipline_name</option>
+                }
+            </select>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Учебные дни:</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                @foreach (var day in studyDays)
+                {
+                    <label style="margin-right: 15px;">
+                        <input type="checkbox"
+                               value="@day.day_id"
+                               checked="@selectedDays.Contains(day.day_id)"
+                               @onchange="@(() => ToggleDay(day.day_id))" />
+                        @day.day_name
+                    </label>
+                }
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button @onclick="UpdateGroup" style="padding: 8px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px;">Сохранить</button>
+            <button @onclick="Cancel" style="margin-left: 10px; padding: 8px 20px;">Отмена</button>
         </div>
     </div>
 }
 
-<div>
-    <a href="/groups">Back to List</a>
-</div>
-
 @code {
-    [SupplyParameterFromQuery]
-    private int group_id { get; set; }
+    private BlazorAcademyHWContext context = default!;
+    private Groups? group;
+    private string? selectedDisciplineId = "";
+    private List<int> selectedDays = new();
+    private List<Disciplines> disciplines = new();
+    private List<StudyDay> studyDays = new();
+    private bool isLoading = true;
 
-    [SupplyParameterFromForm]
-    private Groups? Groups { get; set; }
+    [Parameter] public int group_id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        using var context = DbFactory.CreateDbContext();
-        Groups ??= await context.Groups.FirstOrDefaultAsync(m => m.group_id == group_id);
-
-        if (Groups is null)
-        {
-            NavigationManager.NotFound();
-        }
+        context = DbFactory.CreateDbContext();
+        disciplines = await context.Disciplines.ToListAsync();
+        studyDays = await context.StudyDays.OrderBy(d => d.day_order).ToListAsync();
+        
+        await LoadGroup();
     }
 
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
-    private async Task UpdateGroups()
+    protected override async Task OnParametersSetAsync()
     {
-        using var context = DbFactory.CreateDbContext();
-        context.Attach(Groups!).State = EntityState.Modified;
+        await LoadGroup();
+    }
 
+    private async Task LoadGroup()
+    {
+        if (group_id == 0)
+        {
+            isLoading = false;
+            return;
+        }
+        
+        isLoading = true;
+        
         try
         {
-            await context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!GroupsExists(Groups!.group_id))
-            {
-                NavigationManager.NotFound();
-            }
-            else
-            {
-                throw;
-            }
-        }
+            group = await context.Groups
+                .Include(g => g.GroupsDays)
+                .FirstOrDefaultAsync(g => g.group_id == group_id);
 
-        NavigationManager.NavigateTo("/groups");
+            if (group != null)
+            {
+                selectedDisciplineId = group.direction?.ToString() ?? "";
+                selectedDays = group.GroupsDays?.Select(gd => gd.day_id).ToList() ?? new List<int>();
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
-    private bool GroupsExists(int group_id)
+    private void ToggleDay(int dayId)
     {
-        using var context = DbFactory.CreateDbContext();
-        return context.Groups.Any(e => e.group_id == group_id);
+        if (selectedDays.Contains(dayId))
+            selectedDays.Remove(dayId);
+        else
+            selectedDays.Add(dayId);
+    }
+
+    private async Task UpdateGroup()
+    {
+        if (group == null) return;
+
+        group.direction = string.IsNullOrEmpty(selectedDisciplineId) ? null : (byte?)byte.Parse(selectedDisciplineId);
+
+        var existingDays = await context.GroupsDays
+            .Where(gd => gd.group_id == group.group_id)
+            .ToListAsync();
+
+        context.GroupsDays.RemoveRange(existingDays);
+
+        foreach (var dayId in selectedDays)
+        {
+            context.GroupsDays.Add(new GroupsDay
+            {
+                group_id = group.group_id,
+                day_id = dayId
+            });
+        }
+
+        await context.SaveChangesAsync();
+        Navigation.NavigateTo("/groups");
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/groups");
     }
 }

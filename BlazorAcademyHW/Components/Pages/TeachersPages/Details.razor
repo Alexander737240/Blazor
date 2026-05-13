@@ -1,56 +1,122 @@
-﻿@page "/teachers/details"
+﻿@page "/teachers/details/{teacher_id:int}"
+@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using BlazorAcademyHW.Models
+@using BlazorAcademyHW.Data
 @inject IDbContextFactory<BlazorAcademyHW.Data.BlazorAcademyHWContext> DbFactory
-@inject NavigationManager NavigationManager
+@inject NavigationManager Navigation
 
-<PageTitle>Details</PageTitle>
+<PageTitle>Детали преподавателя</PageTitle>
 
-<h1>Details</h1>
+<h1>Детали преподавателя</h1>
 
-<div>
-    <h2>Teachers</h2>
-    <hr />
-    @if (teachers is null)
-    {
-        <p><em>Loading...</em></p>
-    }
-    else {
-        <dl class="row">
-            <dt class="col-sm-2">last_name</dt>
-            <dd class="col-sm-10">@teachers.last_name</dd>
-            <dt class="col-sm-2">first_name</dt>
-            <dd class="col-sm-10">@teachers.first_name</dd>
-            <dt class="col-sm-2">middle_name</dt>
-            <dd class="col-sm-10">@teachers.middle_name</dd>
-            <dt class="col-sm-2">birth_date</dt>
-            <dd class="col-sm-10">@teachers.birth_date</dd>
-            <dt class="col-sm-2">work_since</dt>
-            <dd class="col-sm-10">@teachers.work_since</dd>
-            <dt class="col-sm-2">rate</dt>
-            <dd class="col-sm-10">@teachers.rate</dd>
-        </dl>
-        <div>
-            <a href="@($"/teachers/edit?teacher_id={teachers.teacher_id}")">Edit</a> |
-            <a href="@($"/teachers")">Back to List</a>
-        </div>
-    }
+<div style="margin-bottom: 20px;">
+    <a href="/teachers">Назад к списку</a>
 </div>
 
-@code {
-    private Teachers? teachers;
+@if (isLoading)
+{
+    <div>Загрузка...</div>
+}
+else if (teacher == null)
+{
+    <div style="color: red;">Преподаватель не найден</div>
+}
+else
+{
+    <div style="width: 600px;">
+        <div style="margin-bottom: 15px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+            <h3>@teacher.last_name @teacher.first_name @teacher.middle_name</h3>
+            <p><strong>Дата рождения:</strong> @teacher.birth_date?.ToString("dd.MM.yyyy")</p>
+            <p><strong>Работает с:</strong> @teacher.work_since?.ToString("dd.MM.yyyy")</p>
+            <p><strong>Ставка:</strong> @teacher.rate</p>
+        </div>
 
-    [SupplyParameterFromQuery]
-    private int teacher_id { get; set; }
+        <div style="margin-top: 20px;">
+            <h3>Дисциплины, которые может вести преподаватель:</h3>
+            
+            @if (disciplinesList.Count == 0)
+            {
+                <div style="padding: 10px; background-color: #fff3cd; border-radius: 5px;">
+                    Нет дисциплин, которые ведет этот преподаватель
+                </div>
+            }
+            else
+            {
+                <table class="table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Название дисциплины</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Количество занятий</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var discipline in disciplinesList)
+                        {
+                            <tr>
+                                <td style="border: 1px solid #ddd; padding: 8px;">
+                                    <a href="@($"/disciplines/details/{discipline.discipline_id}")">
+                                        @discipline.discipline_name
+                                    </a>
+                                </td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">@discipline.number_of_lessons</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private BlazorAcademyHWContext context = default!;
+    private Teachers? teacher;
+    private List<Disciplines> disciplinesList = new();
+    private bool isLoading = true;
+
+    [Parameter] public int teacher_id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        using var context = DbFactory.CreateDbContext();
-        teachers = await context.Teachers.FirstOrDefaultAsync(m => m.teacher_id == teacher_id);
+        context = DbFactory.CreateDbContext();
+        await LoadData();
+    }
 
-        if (teachers is null)
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        if (teacher_id == 0)
         {
-            NavigationManager.NotFound();
+            isLoading = false;
+            return;
+        }
+        
+        isLoading = true;
+        
+        try
+        {
+            // Загружаем преподавателя (преобразуем int в short)
+            teacher = await context.Teachers
+                .FirstOrDefaultAsync(t => t.teacher_id == (short)teacher_id);
+            
+            // Загружаем дисциплины, которые ведет преподаватель
+            if (teacher != null)
+            {
+                disciplinesList = await context.TeacherDisciplines
+                    .Where(td => td.teacher_id == (short)teacher_id)
+                    .Include(td => td.Discipline)
+                    .Select(td => td.Discipline!)
+                    .ToListAsync();
+            }
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 }

@@ -4,6 +4,7 @@ using BlazorAcademyHW.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BlazorAcademyHW.Migrations
 {
     [DbContext(typeof(BlazorAcademyHWContext))]
-    partial class BlazorAcademyHWContextModelSnapshot : ModelSnapshot
+    [Migration("20260513063208_mssql.local_migration_924")]
+    partial class mssqllocal_migration_924
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -146,29 +149,6 @@ namespace BlazorAcademyHW.Migrations
                     b.ToTable("StudyDays");
                 });
 
-            modelBuilder.Entity("BlazorAcademyHW.Models.TeacherDiscipline", b =>
-                {
-                    b.Property<int>("teacher_discipline_id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("teacher_discipline_id"));
-
-                    b.Property<short>("discipline_id")
-                        .HasColumnType("smallint");
-
-                    b.Property<short>("teacher_id")
-                        .HasColumnType("smallint");
-
-                    b.HasKey("teacher_discipline_id");
-
-                    b.HasIndex("discipline_id");
-
-                    b.HasIndex("teacher_id");
-
-                    b.ToTable("TeacherDisciplines");
-                });
-
             modelBuilder.Entity("BlazorAcademyHW.Models.Teachers", b =>
                 {
                     b.Property<short>("teacher_id")
@@ -219,38 +199,9 @@ namespace BlazorAcademyHW.Migrations
                     b.Navigation("StudyDay");
                 });
 
-            modelBuilder.Entity("BlazorAcademyHW.Models.TeacherDiscipline", b =>
-                {
-                    b.HasOne("BlazorAcademyHW.Models.Disciplines", "Discipline")
-                        .WithMany("TeacherDisciplines")
-                        .HasForeignKey("discipline_id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("BlazorAcademyHW.Models.Teachers", "Teacher")
-                        .WithMany("TeacherDisciplines")
-                        .HasForeignKey("teacher_id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Discipline");
-
-                    b.Navigation("Teacher");
-                });
-
-            modelBuilder.Entity("BlazorAcademyHW.Models.Disciplines", b =>
-                {
-                    b.Navigation("TeacherDisciplines");
-                });
-
             modelBuilder.Entity("BlazorAcademyHW.Models.Groups", b =>
                 {
                     b.Navigation("GroupsDays");
-                });
-
-            modelBuilder.Entity("BlazorAcademyHW.Models.Teachers", b =>
-                {
-                    b.Navigation("TeacherDisciplines");
                 });
 #pragma warning restore 612, 618
         }

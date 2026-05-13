@@ -1,10 +1,10 @@
 ﻿@page "/students"
+@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using BlazorAcademyHW.Models
 @using BlazorAcademyHW.Data
 @implements IAsyncDisposable
-@rendermode InteractiveServer
 @inject IDbContextFactory<BlazorAcademyHW.Data.BlazorAcademyHWContext> DbFactory
 
 <PageTitle>Студенты</PageTitle>
@@ -15,12 +15,59 @@
     <a href="students/create">Create New</a>
 </p>
 
-<QuickGrid Class="table" Items="studentsList.AsQueryable()" TGridItem="StudentViewModel" Pagination="pagination">
-    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.last_name" Title="Фамилия" />
-    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.first_name" Title="Имя" />
-    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.middle_name" Title="Отчество" />
-    <PropertyColumn TGridItem="StudentViewModel" TProp="DateOnly?" Property="s => s.birth_date" Title="Дата рождения" Format="dd.MM.yyyy" />
-    <PropertyColumn TGridItem="StudentViewModel" Sortable="true" TProp="string?" Property="s => s.group_name" Title="Группа" />
+<div style="margin-bottom: 20px; padding: 15px; background-color: #f5f5f5; border-radius: 5px;">
+    <div style="margin-bottom: 10px;">
+        <label style="margin-right: 10px;">Фильтр по группе:</label>
+        <select @bind="selectedGroupId" style="padding: 5px; width: 200px; margin-right: 20px;">
+            <option value="">Все группы</option>
+            @foreach (var group in groupsList)
+            {
+                <option value="@group.group_id">@group.group_name</option>
+            }
+        </select>
+        
+        <label style="margin-right: 10px;">Фильтр по направлению:</label>
+        <select @bind="selectedDisciplineId" style="padding: 5px; width: 200px;">
+            <option value="">Все направления</option>
+            @foreach (var discipline in disciplinesList)
+            {
+                <option value="@discipline.discipline_id">@discipline.discipline_name</option>
+            }
+        </select>
+    </div>
+    
+    <div>
+        <label style="margin-right: 10px;">Показывать записей:</label>
+        <select @bind="pageSize" style="padding: 5px; width: 100px; margin-right: 20px;">
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+        </select>
+        
+        <button @onclick="ApplyFilter" style="padding: 5px 15px;">Применить</button>
+        <button @onclick="ClearFilter" style="margin-left: 5px; padding: 5px 15px;">Сбросить</button>
+    </div>
+</div>
+
+<div style="margin-bottom: 10px;">
+    Найдено: @displayedStudents.Count() записей
+</div>
+
+@if (displayedStudents.Count == 0)
+{
+    <div style="padding: 20px; text-align: center; background-color: #fff3cd; border-radius: 5px;">
+        Студенты не найдены
+    </div>
+}
+
+<QuickGrid Class="table" Items="@GetPagedStudents()" TGridItem="StudentViewModel">
+    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.last_name" Title="Фамилия" Sortable="true" />
+    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.first_name" Title="Имя" Sortable="true" />
+    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.middle_name" Title="Отчество" Sortable="true" />
+    <PropertyColumn TGridItem="StudentViewModel" TProp="DateOnly?" Property="s => s.birth_date" Title="Дата рождения" Format="dd.MM.yyyy" Sortable="true" />
+    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.group_name" Title="Группа" Sortable="true" />
+    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.discipline_name" Title="Направление" Sortable="true" />
 
     <TemplateColumn TGridItem="StudentViewModel" Context="student">
         <a href="@($"students/edit?stud_id={student.stud_id}")">Edit</a> |
@@ -29,37 +76,128 @@
     </TemplateColumn>
 </QuickGrid>
 
-<Paginator State="pagination" />
+<div style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+    <button @onclick="PreviousPage" disabled="@(currentPage == 0)">◀ Предыдущая</button>
+    <span>Страница @(currentPage + 1) из @totalPages</span>
+    <button @onclick="NextPage" disabled="@(currentPage >= totalPages - 1)">Следующая ▶</button>
+</div>
 
 @code {
-    private PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
     private BlazorAcademyHWContext context = default!;
-    private List<StudentViewModel> studentsList = new();
+    private List<StudentViewModel> allStudents = new();
+    private List<StudentViewModel> displayedStudents = new();
+    private List<Groups> groupsList = new();
+    private List<Disciplines> disciplinesList = new();
+    private string? selectedGroupId = "";
+    private string? selectedDisciplineId = "";
+    private int pageSize = 10;
+    private int currentPage = 0;
+    private int totalPages = 0;
 
     protected override async Task OnInitializedAsync()
     {
         context = DbFactory.CreateDbContext();
         
-        // Загружаем всех студентов
+        groupsList = await context.Groups.ToListAsync();
+        disciplinesList = await context.Disciplines.ToListAsync();
+        
+        await LoadData();
+    }
+    
+    private async Task LoadData()
+    {
         var students = await context.Students.ToListAsync();
         
-        // Загружаем все группы в словарь
-        var groups = await context.Groups
-            .ToDictionaryAsync(g => g.group_id, g => g.group_name);
+        var groupsDict = await context.Groups
+            .ToDictionaryAsync(g => g.group_id, g => new { g.group_name, g.direction });
         
-        // Соединяем данные
-        studentsList = students.Select(s => new StudentViewModel
+        var disciplinesDict = await context.Disciplines
+            .ToDictionaryAsync(d => d.discipline_id, d => d.discipline_name);
+        
+        allStudents = students.Select(s => new StudentViewModel
         {
             stud_id = s.stud_id,
-            last_name = s.last_name,
-            first_name = s.first_name,
-            middle_name = s.middle_name,
+            last_name = s.last_name ?? "Не указано",
+            first_name = s.first_name ?? "Не указано",
+            middle_name = s.middle_name ?? "Не указано",
             birth_date = s.birth_date,
-            group_name = groups.TryGetValue(s.group, out var groupName) ? groupName : null
+            group_id = s.group,
+            group_name = groupsDict.TryGetValue(s.group, out var group) ? group.group_name : "Не указано",
+            discipline_id = groupsDict.TryGetValue(s.group, out var groupWithDir) && groupWithDir.direction.HasValue
+                ? (short)groupWithDir.direction.Value
+                : null,
+            discipline_name = groupsDict.TryGetValue(s.group, out var groupWithDisc) && groupWithDisc.direction.HasValue
+                ? disciplinesDict.GetValueOrDefault((short)groupWithDisc.direction.Value) ?? "Не указано"
+                : "Не указано"
         }).ToList();
+        
+        ApplyFilter();
+    }
+    
+    private void ApplyFilter()
+    {
+        var query = allStudents.AsEnumerable();
+        
+        if (!string.IsNullOrEmpty(selectedGroupId))
+        {
+            int groupIdInt = int.Parse(selectedGroupId);
+            query = query.Where(s => s.group_id == groupIdInt);
+        }
+        
+        if (!string.IsNullOrEmpty(selectedDisciplineId))
+        {
+            short disciplineIdShort = short.Parse(selectedDisciplineId);
+            query = query.Where(s => s.discipline_id == disciplineIdShort);
+        }
+        
+        displayedStudents = query.ToList();
+        
+        currentPage = 0;
+        UpdatePagination();
+        StateHasChanged();
+    }
+    
+    private void ClearFilter()
+    {
+        selectedGroupId = "";
+        selectedDisciplineId = "";
+        ApplyFilter();
+    }
+    
+    private void UpdatePagination()
+    {
+        totalPages = (int)Math.Ceiling((double)displayedStudents.Count / pageSize);
+        if (totalPages == 0) totalPages = 1;
+        if (currentPage >= totalPages) currentPage = totalPages - 1;
+        if (currentPage < 0) currentPage = 0;
+    }
+    
+    private IQueryable<StudentViewModel> GetPagedStudents()
+    {
+        return displayedStudents
+            .Skip(currentPage * pageSize)
+            .Take(pageSize)
+            .AsQueryable();
+    }
+    
+    private void PreviousPage()
+    {
+        if (currentPage > 0)
+        {
+            currentPage--;
+            StateHasChanged();
+        }
+    }
+    
+    private void NextPage()
+    {
+        if (currentPage < totalPages - 1)
+        {
+            currentPage++;
+            StateHasChanged();
+        }
     }
 
-    // Класс должен быть public
     public class StudentViewModel
     {
         public int stud_id { get; set; }
@@ -67,7 +205,10 @@
         public string? first_name { get; set; }
         public string? middle_name { get; set; }
         public DateOnly? birth_date { get; set; }
+        public int group_id { get; set; }
         public string? group_name { get; set; }
+        public short? discipline_id { get; set; }
+        public string? discipline_name { get; set; }
     }
 
     public async ValueTask DisposeAsync()

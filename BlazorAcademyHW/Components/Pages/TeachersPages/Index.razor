@@ -23,10 +23,10 @@
     <PropertyColumn Property="teachers => teachers.work_since" Title="Работает с:" />
     <PropertyColumn Property="teachers => teachers.rate" Title="Заработок" />
 
-    <TemplateColumn Context="teachers">
-        <a href="@($"teachers/edit?teacher_id={teachers.teacher_id}")">Edit</a> |
-        <a href="@($"teachers/details?teacher_id={teachers.teacher_id}")">Details</a> |
-        <a href="@($"teachers/delete?teacher_id={teachers.teacher_id}")">Delete</a>
+    <TemplateColumn Context="teacher">
+        <a href="@($"/teachers/edit/{teacher.teacher_id}")">Edit</a> |
+        <a href="@($"/teachers/details/{teacher.teacher_id}")">Details</a> |
+        <a href="@($"/teachers/delete/{teacher.teacher_id}")">Delete</a>
     </TemplateColumn>
 </QuickGrid>
 

@@ -55,7 +55,6 @@
 
     protected override void OnInitialized() => Students ??= new();
 
-    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddStudents()
     {
         using var context = DbFactory.CreateDbContext();

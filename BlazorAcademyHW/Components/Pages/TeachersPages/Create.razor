@@ -1,71 +1,161 @@
 ﻿@page "/teachers/create"
+@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using BlazorAcademyHW.Models
+@using BlazorAcademyHW.Data
 @inject IDbContextFactory<BlazorAcademyHW.Data.BlazorAcademyHWContext> DbFactory
-@inject NavigationManager NavigationManager
+@inject NavigationManager Navigation
 
-<PageTitle>Create</PageTitle>
+<PageTitle>Создание преподавателя</PageTitle>
 
-<h1>Create</h1>
+<h1>Создание преподавателя</h1>
 
-<h2>Teachers</h2>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <EditForm method="post" Model="Teachers" OnValidSubmit="AddTeachers" FormName="create" Enhance>
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert"/>
-            <div class="mb-3">
-                <label for="last_name" class="form-label">last_name:</label> 
-                <InputText id="last_name" @bind-Value="Teachers.last_name" class="form-control" /> 
-                <ValidationMessage For="() => Teachers.last_name" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <label for="first_name" class="form-label">first_name:</label> 
-                <InputText id="first_name" @bind-Value="Teachers.first_name" class="form-control" /> 
-                <ValidationMessage For="() => Teachers.first_name" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <label for="middle_name" class="form-label">middle_name:</label> 
-                <InputText id="middle_name" @bind-Value="Teachers.middle_name" class="form-control" /> 
-                <ValidationMessage For="() => Teachers.middle_name" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <label for="birth_date" class="form-label">birth_date:</label> 
-                <InputDate id="birth_date" @bind-Value="Teachers.birth_date" class="form-control" /> 
-                <ValidationMessage For="() => Teachers.birth_date" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <label for="work_since" class="form-label">work_since:</label> 
-                <InputDate id="work_since" @bind-Value="Teachers.work_since" class="form-control" /> 
-                <ValidationMessage For="() => Teachers.work_since" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <label for="rate" class="form-label">rate:</label> 
-                <InputNumber id="rate" @bind-Value="Teachers.rate" class="form-control" /> 
-                <ValidationMessage For="() => Teachers.rate" class="text-danger" /> 
-            </div>        
-            <button type="submit" class="btn btn-primary">Create</button>
-        </EditForm>
+<div style="margin-bottom: 20px;">
+    <a href="/teachers">Назад к списку</a>
+</div>
+
+@if (errorMessage != null)
+{
+    <div style="padding: 10px; background-color: #f8d7da; color: #721c24; border-radius: 5px; margin-bottom: 15px;">
+        @errorMessage
+    </div>
+}
+
+<div style="width: 500px;">
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px;">Фамилия:</label>
+        <input @bind="lastName" style="width: 100%; padding: 8px;" />
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px;">Имя:</label>
+        <input @bind="firstName" style="width: 100%; padding: 8px;" />
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px;">Отчество:</label>
+        <input @bind="middleName" style="width: 100%; padding: 8px;" />
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px;">Дата рождения:</label>
+        <input type="date" @bind="birthDate" style="width: 100%; padding: 8px;" />
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px;">Работает с:</label>
+        <input type="date" @bind="workSince" style="width: 100%; padding: 8px;" />
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px;">Ставка:</label>
+        <input type="number" step="0.01" @bind="rate" style="width: 100%; padding: 8px;" />
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px;">Дисциплины, которые ведет преподаватель:</label>
+        <div style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; max-height: 200px; overflow-y: auto;">
+            @foreach (var discipline in allDisciplines)
+            {
+                <label style="display: block; margin-bottom: 5px;">
+                    <input type="checkbox"
+                           value="@discipline.discipline_id"
+                           checked="@selectedDisciplines.Contains(discipline.discipline_id)"
+                           @onchange="@(() => ToggleDiscipline(discipline.discipline_id))" />
+                    @discipline.discipline_name (часов: @discipline.number_of_lessons)
+                </label>
+            }
+        </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <button @onclick="SaveTeacher" style="padding: 8px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px;">Сохранить</button>
+        <button @onclick="Cancel" style="margin-left: 10px; padding: 8px 20px;">Отмена</button>
     </div>
 </div>
 
-<div>
-    <a href="/teachers">Back to List</a>
-</div>
-
 @code {
-    [SupplyParameterFromForm]
-    private Teachers Teachers { get; set; } = default!;
+    private BlazorAcademyHWContext context = default!;
+    private string lastName = "";
+    private string firstName = "";
+    private string middleName = "";
+    private DateOnly? birthDate;
+    private DateOnly? workSince;
+    private decimal? rate;
+    private List<short> selectedDisciplines = new();
+    private List<Disciplines> allDisciplines = new();
+    private string? errorMessage = null;
 
-    protected override void OnInitialized() => Teachers ??= new();
-
-    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
-    private async Task AddTeachers()
+    protected override async Task OnInitializedAsync()
     {
-        using var context = DbFactory.CreateDbContext();
-        context.Teachers.Add(Teachers);
+        context = DbFactory.CreateDbContext();
+        allDisciplines = await context.Disciplines.ToListAsync();
+    }
+
+    private void ToggleDiscipline(short disciplineId)
+    {
+        if (selectedDisciplines.Contains(disciplineId))
+            selectedDisciplines.Remove(disciplineId);
+        else
+            selectedDisciplines.Add(disciplineId);
+    }
+
+    private async Task SaveTeacher()
+    {
+        errorMessage = null;
+        
+        if (string.IsNullOrWhiteSpace(lastName))
+        {
+            errorMessage = "Введите фамилию";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(firstName))
+        {
+            errorMessage = "Введите имя";
+            return;
+        }
+
+        int nextId = 1;
+        if (await context.Teachers.AnyAsync())
+        {
+            nextId = await context.Teachers.MaxAsync(t => t.teacher_id) + 1;
+        }
+
+        var teacher = new Teachers
+        {
+            teacher_id = (short)nextId,
+            last_name = lastName,
+            first_name = firstName,
+            middle_name = middleName,
+            birth_date = birthDate,
+            work_since = workSince,
+            rate = rate
+        };
+
+        context.Teachers.Add(teacher);
         await context.SaveChangesAsync();
-        NavigationManager.NavigateTo("/teachers");
+
+        foreach (var disciplineId in selectedDisciplines)
+        {
+            var teacherDiscipline = new TeacherDiscipline
+            {
+                teacher_id = teacher.teacher_id,
+                discipline_id = disciplineId
+            };
+            context.TeacherDisciplines.Add(teacherDiscipline);
+        }
+        
+        if (selectedDisciplines.Any())
+        {
+            await context.SaveChangesAsync();
+        }
+
+        Navigation.NavigateTo("/teachers");
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/teachers");
     }
 }

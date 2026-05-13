@@ -1,94 +1,153 @@
-﻿@page "/disciplines/edit"
+﻿@page "/disciplines/edit/{discipline_id:int}"
+@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using BlazorAcademyHW.Models
+@using BlazorAcademyHW.Data
 @inject IDbContextFactory<BlazorAcademyHW.Data.BlazorAcademyHWContext> DbFactory
-@inject NavigationManager NavigationManager
+@inject NavigationManager Navigation
 
-<PageTitle>Edit</PageTitle>
+<PageTitle>Редактирование дисциплины</PageTitle>
 
-<h1>Edit</h1>
+<h1>Редактирование дисциплины</h1>
 
-<h2>Disciplines</h2>
-<hr />
-@if (Disciplines is null)
+<div style="margin-bottom: 20px;">
+    <a href="/disciplines">Назад к списку</a>
+</div>
+
+<div style="margin-bottom: 10px;">
+    <strong>ID дисциплины:</strong> @discipline_id
+</div>
+
+@if (isLoading)
 {
-    <p><em>Loading...</em></p>
+    <div>Загрузка...</div>
+}
+else if (discipline == null)
+{
+    <div style="color: red; padding: 10px; background-color: #f8d7da; border-radius: 5px;">
+        Дисциплина с ID @discipline_id не найдена
+    </div>
 }
 else
 {
-    <div class="row">
-        <div class="col-md-4">
-            <EditForm method="post" Model="Disciplines" OnValidSubmit="UpdateDisciplines" FormName="edit" Enhance>
-                <DataAnnotationsValidator />
-                <ValidationSummary role="alert"/>
-                <input type="hidden" name="Disciplines.discipline_id" value="@Disciplines.discipline_id" />
-                <div class="mb-3">
-                    <label for="discipline_name" class="form-label">discipline_name:</label>
-                    <InputText id="discipline_name" @bind-Value="Disciplines.discipline_name" class="form-control" />
-                    <ValidationMessage For="() => Disciplines.discipline_name" class="text-danger" />
-                </div>
-                <div class="mb-3">
-                    <label for="number_of_lessons" class="form-label">Number of Lessons:</label>
-                    <InputNumber id="number_of_lessons" @bind-Value="Disciplines.number_of_lessons" class="form-control" />
-                    <ValidationMessage For="() => Disciplines.number_of_lessons" class="text-danger" />
-                </div>
-                <button type="submit" class="btn btn-primary">Save</button>
-            </EditForm>
+    <div style="width: 500px;">
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Название дисциплины:</label>
+            <input @bind="discipline.discipline_name" style="width: 100%; padding: 8px;" />
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Количество занятий:</label>
+            <input type="number" @bind="discipline.number_of_lessons" style="width: 100%; padding: 8px;" />
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Преподаватели, которые могут вести дисциплину:</label>
+            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; max-height: 200px; overflow-y: auto;">
+                @foreach (var teacher in allTeachers)
+                {
+                    <label style="display: block; margin-bottom: 5px;">
+                        <input type="checkbox"
+                               value="@teacher.teacher_id"
+                               checked="@selectedTeachers.Contains(teacher.teacher_id)"
+                               @onchange="@(() => ToggleTeacher(teacher.teacher_id))" />
+                        @teacher.last_name @teacher.first_name @teacher.middle_name
+                    </label>
+                }
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button @onclick="UpdateDiscipline" style="padding: 8px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px;">Сохранить</button>
+            <button @onclick="Cancel" style="margin-left: 10px; padding: 8px 20px;">Отмена</button>
         </div>
     </div>
 }
 
-<div>
-    <a href="/disciplines">Back to List</a>
-</div>
-
 @code {
-    [SupplyParameterFromQuery]
-    private short discipline_id { get; set; }
+    private BlazorAcademyHWContext context = default!;
+    private Disciplines? discipline;
+    private List<Teachers> allTeachers = new();
+    private List<short> selectedTeachers = new();
+    private bool isLoading = true;
 
-    [SupplyParameterFromForm]
-    private Disciplines? Disciplines { get; set; }
+    [Parameter] public int discipline_id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        using var context = DbFactory.CreateDbContext();
-        Disciplines ??= await context.Disciplines.FirstOrDefaultAsync(m => m.discipline_id == discipline_id);
-
-        if (Disciplines is null)
-        {
-            NavigationManager.NotFound();
-        }
+        context = DbFactory.CreateDbContext();
+        allTeachers = await context.Teachers.ToListAsync();
+        await LoadData();
     }
 
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
-    private async Task UpdateDisciplines()
+    protected override async Task OnParametersSetAsync()
     {
-        using var context = DbFactory.CreateDbContext();
-        context.Attach(Disciplines!).State = EntityState.Modified;
+        await LoadData();
+    }
 
+    private async Task LoadData()
+    {
+        isLoading = true;
+        
         try
         {
-            await context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!DisciplinesExists(Disciplines!.discipline_id))
+            if (discipline_id > 0)
             {
-                NavigationManager.NotFound();
-            }
-            else
-            {
-                throw;
-            }
-        }
+                discipline = await context.Disciplines
+                    .Include(d => d.TeacherDisciplines)
+                    .FirstOrDefaultAsync(d => d.discipline_id == discipline_id);
 
-        NavigationManager.NavigateTo("/disciplines");
+                if (discipline != null)
+                {
+                    selectedTeachers = discipline.TeacherDisciplines?
+                        .Select(td => td.teacher_id).ToList() ?? new List<short>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 
-    private bool DisciplinesExists(short discipline_id)
+    private void ToggleTeacher(short teacherId)
     {
-        using var context = DbFactory.CreateDbContext();
-        return context.Disciplines.Any(e => e.discipline_id == discipline_id);
+        if (selectedTeachers.Contains(teacherId))
+            selectedTeachers.Remove(teacherId);
+        else
+            selectedTeachers.Add(teacherId);
+    }
+
+    private async Task UpdateDiscipline()
+    {
+        if (discipline == null) return;
+
+        var existingTeachers = await context.TeacherDisciplines
+            .Where(td => td.discipline_id == discipline.discipline_id)
+            .ToListAsync();
+
+        context.TeacherDisciplines.RemoveRange(existingTeachers);
+
+        foreach (var teacherId in selectedTeachers)
+        {
+            context.TeacherDisciplines.Add(new TeacherDiscipline
+            {
+                teacher_id = teacherId,
+                discipline_id = discipline.discipline_id
+            });
+        }
+
+        await context.SaveChangesAsync();
+        Navigation.NavigateTo("/disciplines");
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/disciplines");
     }
 }

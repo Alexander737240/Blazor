@@ -1,9 +1,9 @@
 ﻿@page "/groups"
+@rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using BlazorAcademyHW.Models
 @using BlazorAcademyHW.Data
-@rendermode InteractiveServer
 @implements IAsyncDisposable
 @inject IDbContextFactory<BlazorAcademyHW.Data.BlazorAcademyHWContext> DbFactory
 
@@ -15,42 +15,172 @@
     <a href="groups/create">Create New</a>
 </p>
 
-<QuickGrid Class="table" Items="groupsList.AsQueryable()" TGridItem="GroupViewModel" Pagination="pagination">
+<div style="margin-bottom: 20px; padding: 15px; background-color: #f5f5f5; border-radius: 5px;">
+    <label style="margin-right: 10px;">Фильтр по дисциплине:</label>
+    <select @bind="selectedDisciplineId" style="padding: 5px; width: 200px; margin-right: 10px;">
+        <option value="">Все дисциплины</option>
+        @foreach (var discipline in disciplinesList)
+        {
+            <option value="@discipline.discipline_id">@discipline.discipline_name</option>
+        }
+    </select>
+    
+    <label style="margin-right: 10px;">Фильтр по дням недели:</label>
+    <select @bind="selectedDayId" style="padding: 5px; width: 200px; margin-right: 10px;">
+        <option value="">Все дни</option>
+        @foreach (var day in studyDaysList)
+        {
+            <option value="@day.day_id">@day.day_name</option>
+        }
+    </select>
+    
+    <label style="margin-right: 10px;">Показывать записей:</label>
+    <select @bind="pageSize" style="padding: 5px; width: 100px; margin-right: 10px;">
+        <option value="5">5</option>
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="50">50</option>
+    </select>
+    
+    <button @onclick="ApplyFilter" style="padding: 5px 15px;">Применить</button>
+    <button @onclick="ClearFilter" style="margin-left: 5px; padding: 5px 15px;">Сбросить</button>
+</div>
+
+<div style="margin-bottom: 10px;">
+    Найдено: @displayedGroups.Count() записей
+</div>
+
+<QuickGrid Class="table" Items="@GetPagedGroups()" TGridItem="GroupViewModel">
     <PropertyColumn TGridItem="GroupViewModel" TProp="string?" Property="g => g.group_name" Title="Название группы" Sortable="true" />
     <PropertyColumn TGridItem="GroupViewModel" TProp="string?" Property="g => g.discipline_name" Title="Дисциплина" Sortable="true" />
+    <PropertyColumn TGridItem="GroupViewModel" TProp="string?" Property="g => g.study_days" Title="Учебные дни" Sortable="true" />
 
     <TemplateColumn TGridItem="GroupViewModel" Context="group">
-        <a href="@($"groups/edit?group_id={group.group_id}")">Edit</a> |
+        <a href="@($"/groups/edit/{group.group_id}")">Edit</a> |
         <a href="@($"groups/details?group_id={group.group_id}")">Details</a> |
         <a href="@($"groups/delete?group_id={group.group_id}")">Delete</a>
     </TemplateColumn>
 </QuickGrid>
 
-<Paginator State="pagination" />
+<div style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+    <button @onclick="PreviousPage" disabled="@(currentPage == 0)">◀ Предыдущая</button>
+    <span>Страница @(currentPage + 1) из @totalPages</span>
+    <button @onclick="NextPage" disabled="@(currentPage >= totalPages - 1)">Следующая ▶</button>
+</div>
 
 @code {
-    private PaginationState pagination = new PaginationState { ItemsPerPage = 5 };
     private BlazorAcademyHWContext context = default!;
-    private List<GroupViewModel> groupsList = new();
+    private List<GroupViewModel> allGroups = new();
+    private List<GroupViewModel> displayedGroups = new();
+    private List<Disciplines> disciplinesList = new();
+    private List<StudyDay> studyDaysList = new();
+    private string? selectedDisciplineId = "";
+    private string? selectedDayId = "";
+    private int pageSize = 10;
+    private int currentPage = 0;
+    private int totalPages = 0;
 
     protected override async Task OnInitializedAsync()
     {
         context = DbFactory.CreateDbContext();
         
-        // Загружаем все группы
-        var groups = await context.Groups.ToListAsync();
+        disciplinesList = await context.Disciplines.ToListAsync();
+        studyDaysList = await context.StudyDays.OrderBy(d => d.day_order).ToListAsync();
         
-        // Загружаем все дисциплины в словарь
+        await LoadData();
+    }
+    
+    private async Task LoadData()
+    {
+        var groups = await context.Groups
+            .Include(g => g.GroupsDays)
+            .ThenInclude(gd => gd.StudyDay)
+            .ToListAsync();
+    
         var disciplines = await context.Disciplines
             .ToDictionaryAsync(d => d.discipline_id, d => d.discipline_name);
-        
-        // Соединяем данные
-        groupsList = groups.Select(g => new GroupViewModel
+    
+        allGroups = groups.Select(g => new GroupViewModel
         {
             group_id = g.group_id,
             group_name = g.group_name ?? "Без названия",
-            discipline_name = GetDisciplineName(g.direction, disciplines)
+            direction = g.direction,
+            discipline_name = GetDisciplineName(g.direction, disciplines),
+            study_days = (g.GroupsDays?.Any() == true)
+                ? string.Join(", ", g.GroupsDays
+                    .Where(gd => gd.StudyDay != null)
+                    .Select(gd => gd.StudyDay!.day_short)
+                    .OrderBy(d => d))
+                : "",
+            study_days_ids = g.GroupsDays?.Select(gd => gd.day_id).ToList() ?? new List<int>()
         }).ToList();
+    
+        ApplyFilter();
+    }
+    
+    private void ApplyFilter()
+    {
+        var query = allGroups.AsEnumerable();
+        
+        if (!string.IsNullOrEmpty(selectedDisciplineId))
+        {
+            short disciplineIdShort = short.Parse(selectedDisciplineId);
+            query = query.Where(g => g.direction.HasValue && (short)g.direction.Value == disciplineIdShort);
+        }
+        
+        if (!string.IsNullOrEmpty(selectedDayId))
+        {
+            int dayIdInt = int.Parse(selectedDayId);
+            query = query.Where(g => g.study_days_ids.Contains(dayIdInt));
+        }
+        
+        displayedGroups = query.ToList();
+        
+ 
+        currentPage = 0;
+        UpdatePagination();
+        StateHasChanged();
+    }
+    
+    private void ClearFilter()
+    {
+        selectedDisciplineId = "";
+        selectedDayId = "";
+        ApplyFilter();
+    }
+    
+    private void UpdatePagination()
+    {
+        totalPages = (int)Math.Ceiling((double)displayedGroups.Count / pageSize);
+        if (totalPages == 0) totalPages = 1;
+        if (currentPage >= totalPages) currentPage = totalPages - 1;
+        if (currentPage < 0) currentPage = 0;
+    }
+    
+    private IQueryable<GroupViewModel> GetPagedGroups()
+    {
+        return displayedGroups
+            .Skip(currentPage * pageSize)
+            .Take(pageSize)
+            .AsQueryable();
+    }
+    
+    private void PreviousPage()
+    {
+        if (currentPage > 0)
+        {
+            currentPage--;
+            StateHasChanged();
+        }
+    }
+    
+    private void NextPage()
+    {
+        if (currentPage < totalPages - 1)
+        {
+            currentPage++;
+            StateHasChanged();
+        }
     }
     
     private string GetDisciplineName(byte? direction, Dictionary<short, string?> disciplines)
@@ -66,12 +196,14 @@
         return "Не указано";
     }
 
-    // Класс должен быть public (не private)
     public class GroupViewModel
     {
         public int group_id { get; set; }
         public string group_name { get; set; } = "";
+        public byte? direction { get; set; }
         public string discipline_name { get; set; } = "";
+        public string study_days { get; set; } = "";
+        public List<int> study_days_ids { get; set; } = new List<int>();
     }
 
     public async ValueTask DisposeAsync()

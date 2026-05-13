@@ -4,7 +4,8 @@ namespace BlazorAcademyHW.Models
 {
     public class Teachers
     {
-        [Key] public short teacher_id { get; set; }
+        [Key]
+        public short teacher_id { get; set; }
 
         public string? last_name { get; set; }
 
@@ -17,5 +18,7 @@ namespace BlazorAcademyHW.Models
         public DateOnly? work_since { get; set; }
 
         public decimal? rate { get; set; }
+
+        public virtual ICollection<TeacherDiscipline>? TeacherDisciplines { get; set; }
     }
 }
