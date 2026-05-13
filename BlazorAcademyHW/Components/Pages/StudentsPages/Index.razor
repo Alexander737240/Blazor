@@ -4,9 +4,10 @@
 @using BlazorAcademyHW.Models
 @using BlazorAcademyHW.Data
 @implements IAsyncDisposable
+@rendermode InteractiveServer
 @inject IDbContextFactory<BlazorAcademyHW.Data.BlazorAcademyHWContext> DbFactory
 
-<PageTitle>Index</PageTitle>
+<PageTitle>Студенты</PageTitle>
 
 <h1>Студенты</h1>
 
@@ -14,27 +15,64 @@
     <a href="students/create">Create New</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Students">
-    <PropertyColumn Property="students => students.last_name" />
-    <PropertyColumn Property="students => students.first_name" />
-    <PropertyColumn Property="students => students.middle_name" />
-    <PropertyColumn Property="students => students.birth_date" />
-    <PropertyColumn Property="students => students.group" />
+<QuickGrid Class="table" Items="studentsList.AsQueryable()" TGridItem="StudentViewModel" Pagination="pagination">
+    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.last_name" Title="Фамилия" />
+    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.first_name" Title="Имя" />
+    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.middle_name" Title="Отчество" />
+    <PropertyColumn TGridItem="StudentViewModel" TProp="DateOnly?" Property="s => s.birth_date" Title="Дата рождения" Format="dd.MM.yyyy" />
+    <PropertyColumn TGridItem="StudentViewModel" Sortable="true" TProp="string?" Property="s => s.group_name" Title="Группа" />
 
-    <TemplateColumn Context="students">
-        <a href="@($"students/edit?stud_id={students.stud_id}")">Edit</a> |
-        <a href="@($"students/details?stud_id={students.stud_id}")">Details</a> |
-        <a href="@($"students/delete?stud_id={students.stud_id}")">Delete</a>
+    <TemplateColumn TGridItem="StudentViewModel" Context="student">
+        <a href="@($"students/edit?stud_id={student.stud_id}")">Edit</a> |
+        <a href="@($"students/details?stud_id={student.stud_id}")">Details</a> |
+        <a href="@($"students/delete?stud_id={student.stud_id}")">Delete</a>
     </TemplateColumn>
 </QuickGrid>
 
-@code {
-    private BlazorAcademyHWContext context = default!;
+<Paginator State="pagination" />
 
-    protected override void OnInitialized()
+@code {
+    private PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+    private BlazorAcademyHWContext context = default!;
+    private List<StudentViewModel> studentsList = new();
+
+    protected override async Task OnInitializedAsync()
     {
         context = DbFactory.CreateDbContext();
+        
+        // Загружаем всех студентов
+        var students = await context.Students.ToListAsync();
+        
+        // Загружаем все группы в словарь
+        var groups = await context.Groups
+            .ToDictionaryAsync(g => g.group_id, g => g.group_name);
+        
+        // Соединяем данные
+        studentsList = students.Select(s => new StudentViewModel
+        {
+            stud_id = s.stud_id,
+            last_name = s.last_name,
+            first_name = s.first_name,
+            middle_name = s.middle_name,
+            birth_date = s.birth_date,
+            group_name = groups.TryGetValue(s.group, out var groupName) ? groupName : null
+        }).ToList();
     }
 
-    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+    // Класс должен быть public
+    public class StudentViewModel
+    {
+        public int stud_id { get; set; }
+        public string? last_name { get; set; }
+        public string? first_name { get; set; }
+        public string? middle_name { get; set; }
+        public DateOnly? birth_date { get; set; }
+        public string? group_name { get; set; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (context != null)
+            await context.DisposeAsync();
+    }
 }

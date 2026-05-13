@@ -3,10 +3,11 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using BlazorAcademyHW.Models
 @using BlazorAcademyHW.Data
+@rendermode InteractiveServer
 @implements IAsyncDisposable
 @inject IDbContextFactory<BlazorAcademyHW.Data.BlazorAcademyHWContext> DbFactory
 
-<PageTitle>Index</PageTitle>
+<PageTitle>Группы</PageTitle>
 
 <h1>Группы</h1>
 
@@ -14,24 +15,68 @@
     <a href="groups/create">Create New</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Groups">
-    <PropertyColumn Property="groups => groups.group_name" />
-    <PropertyColumn Property="groups => groups.direction" />
+<QuickGrid Class="table" Items="groupsList.AsQueryable()" TGridItem="GroupViewModel" Pagination="pagination">
+    <PropertyColumn TGridItem="GroupViewModel" TProp="string?" Property="g => g.group_name" Title="Название группы" Sortable="true" />
+    <PropertyColumn TGridItem="GroupViewModel" TProp="string?" Property="g => g.discipline_name" Title="Дисциплина" Sortable="true" />
 
-    <TemplateColumn Context="groups">
-        <a href="@($"groups/edit?group_id={groups.group_id}")">Edit</a> |
-        <a href="@($"groups/details?group_id={groups.group_id}")">Details</a> |
-        <a href="@($"groups/delete?group_id={groups.group_id}")">Delete</a>
+    <TemplateColumn TGridItem="GroupViewModel" Context="group">
+        <a href="@($"groups/edit?group_id={group.group_id}")">Edit</a> |
+        <a href="@($"groups/details?group_id={group.group_id}")">Details</a> |
+        <a href="@($"groups/delete?group_id={group.group_id}")">Delete</a>
     </TemplateColumn>
 </QuickGrid>
 
-@code {
-    private BlazorAcademyHWContext context = default!;
+<Paginator State="pagination" />
 
-    protected override void OnInitialized()
+@code {
+    private PaginationState pagination = new PaginationState { ItemsPerPage = 5 };
+    private BlazorAcademyHWContext context = default!;
+    private List<GroupViewModel> groupsList = new();
+
+    protected override async Task OnInitializedAsync()
     {
         context = DbFactory.CreateDbContext();
+        
+        // Загружаем все группы
+        var groups = await context.Groups.ToListAsync();
+        
+        // Загружаем все дисциплины в словарь
+        var disciplines = await context.Disciplines
+            .ToDictionaryAsync(d => d.discipline_id, d => d.discipline_name);
+        
+        // Соединяем данные
+        groupsList = groups.Select(g => new GroupViewModel
+        {
+            group_id = g.group_id,
+            group_name = g.group_name ?? "Без названия",
+            discipline_name = GetDisciplineName(g.direction, disciplines)
+        }).ToList();
+    }
+    
+    private string GetDisciplineName(byte? direction, Dictionary<short, string?> disciplines)
+    {
+        if (!direction.HasValue)
+            return "Не указано";
+        
+        short directionAsShort = (short)direction.Value;
+        
+        if (disciplines.TryGetValue(directionAsShort, out string? disciplineName) && disciplineName != null)
+            return disciplineName;
+        
+        return "Не указано";
     }
 
-    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+    // Класс должен быть public (не private)
+    public class GroupViewModel
+    {
+        public int group_id { get; set; }
+        public string group_name { get; set; } = "";
+        public string discipline_name { get; set; } = "";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (context != null)
+            await context.DisposeAsync();
+    }
 }
