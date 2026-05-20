@@ -25,7 +25,7 @@
                 <option value="@group.group_id">@group.group_name</option>
             }
         </select>
-        
+
         <label style="margin-right: 10px;">Фильтр по направлению:</label>
         <select @bind="selectedDisciplineId" style="padding: 5px; width: 200px;">
             <option value="">Все направления</option>
@@ -35,7 +35,7 @@
             }
         </select>
     </div>
-    
+
     <div>
         <label style="margin-right: 10px;">Показывать записей:</label>
         <select @bind="pageSize" style="padding: 5px; width: 100px; margin-right: 20px;">
@@ -44,9 +44,6 @@
             <option value="20">20</option>
             <option value="50">50</option>
         </select>
-        
-        <button @onclick="ApplyFilter" style="padding: 5px 15px;">Применить</button>
-        <button @onclick="ClearFilter" style="margin-left: 5px; padding: 5px 15px;">Сбросить</button>
     </div>
 </div>
 
@@ -62,17 +59,17 @@
 }
 
 <QuickGrid Class="table" Items="@GetPagedStudents()" TGridItem="StudentViewModel">
-    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.last_name" Title="Фамилия" Sortable="true" />
-    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.first_name" Title="Имя" Sortable="true" />
-    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.middle_name" Title="Отчество" Sortable="true" />
-    <PropertyColumn TGridItem="StudentViewModel" TProp="DateOnly?" Property="s => s.birth_date" Title="Дата рождения" Format="dd.MM.yyyy" Sortable="true" />
-    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.group_name" Title="Группа" Sortable="true" />
-    <PropertyColumn TGridItem="StudentViewModel" TProp="string?" Property="s => s.discipline_name" Title="Направление" Sortable="true" />
+    <PropertyColumn Class="last-name" TGridItem="StudentViewModel" TProp="string?" Property="s => s.last_name" Title="Фамилия" Sortable="true" />
+    <PropertyColumn Class="first-name" TGridItem="StudentViewModel" TProp="string?" Property="s => s.first_name" Title="Имя" Sortable="true" />
+    <PropertyColumn Class="middle-name" TGridItem="StudentViewModel" TProp="string?" Property="s => s.middle_name" Title="Отчество" Sortable="true" />
+    <PropertyColumn Class="birth-date" TGridItem="StudentViewModel" TProp="string?" Property="s => s.age" Title="Возраст" Sortable="true" />
+    <PropertyColumn Class="group-name" TGridItem="StudentViewModel" TProp="string?" Property="s => s.group_name" Title="Группа" Sortable="true" />
+    <PropertyColumn Class="disc-name" TGridItem="StudentViewModel" TProp="string?" Property="s => s.discipline_name" Title="Направление" Sortable="true" />
 
     <TemplateColumn TGridItem="StudentViewModel" Context="student">
-        <a href="@($"students/edit?stud_id={student.stud_id}")">Edit</a> |
-        <a href="@($"students/details?stud_id={student.stud_id}")">Details</a> |
-        <a href="@($"students/delete?stud_id={student.stud_id}")">Delete</a>
+        <a href="@($"/students/edit/{student.stud_id}")">Edit</a> |
+        <a href="@($"/students/details/{student.stud_id}")">Details</a> |
+        <a href="@($"/students/delete/{student.stud_id}")">Delete</a>
     </TemplateColumn>
 </QuickGrid>
 
@@ -97,23 +94,21 @@
     protected override async Task OnInitializedAsync()
     {
         context = DbFactory.CreateDbContext();
-        
+
         groupsList = await context.Groups.ToListAsync();
         disciplinesList = await context.Disciplines.ToListAsync();
-        
+
         await LoadData();
     }
-    
+
     private async Task LoadData()
     {
         var students = await context.Students.ToListAsync();
-        
         var groupsDict = await context.Groups
             .ToDictionaryAsync(g => g.group_id, g => new { g.group_name, g.direction });
-        
         var disciplinesDict = await context.Disciplines
             .ToDictionaryAsync(d => d.discipline_id, d => d.discipline_name);
-        
+
         allStudents = students.Select(s => new StudentViewModel
         {
             stud_id = s.stud_id,
@@ -121,49 +116,64 @@
             first_name = s.first_name ?? "Не указано",
             middle_name = s.middle_name ?? "Не указано",
             birth_date = s.birth_date,
+            age = CalculateAge(s.birth_date),
             group_id = s.group,
             group_name = groupsDict.TryGetValue(s.group, out var group) ? group.group_name : "Не указано",
             discipline_id = groupsDict.TryGetValue(s.group, out var groupWithDir) && groupWithDir.direction.HasValue
-                ? (short)groupWithDir.direction.Value
-                : null,
+                        ? groupWithDir.direction.Value
+                        : null,
             discipline_name = groupsDict.TryGetValue(s.group, out var groupWithDisc) && groupWithDisc.direction.HasValue
-                ? disciplinesDict.GetValueOrDefault((short)groupWithDisc.direction.Value) ?? "Не указано"
-                : "Не указано"
+                        ? disciplinesDict.GetValueOrDefault(groupWithDisc.direction.Value) ?? "Не указано"
+                        : "Не указано"
         }).ToList();
-        
+
         ApplyFilter();
     }
-    
+
+    private string CalculateAge(DateOnly? birthDate)
+    {
+        if (!birthDate.HasValue)
+            return "Не указано";
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var age = today.Year - birthDate.Value.Year;
+
+        if (birthDate.Value > today.AddYears(-age))
+            age--;
+
+        return $"{age} лет";
+    }
+
     private void ApplyFilter()
     {
         var query = allStudents.AsEnumerable();
-        
+
         if (!string.IsNullOrEmpty(selectedGroupId))
         {
             int groupIdInt = int.Parse(selectedGroupId);
             query = query.Where(s => s.group_id == groupIdInt);
         }
-        
+
         if (!string.IsNullOrEmpty(selectedDisciplineId))
         {
-            short disciplineIdShort = short.Parse(selectedDisciplineId);
-            query = query.Where(s => s.discipline_id == disciplineIdShort);
+            byte disciplineIdByte = byte.Parse(selectedDisciplineId);
+            query = query.Where(s => s.discipline_id == disciplineIdByte);
         }
-        
+
         displayedStudents = query.ToList();
-        
+
         currentPage = 0;
         UpdatePagination();
         StateHasChanged();
     }
-    
+
     private void ClearFilter()
     {
         selectedGroupId = "";
         selectedDisciplineId = "";
         ApplyFilter();
     }
-    
+
     private void UpdatePagination()
     {
         totalPages = (int)Math.Ceiling((double)displayedStudents.Count / pageSize);
@@ -171,7 +181,7 @@
         if (currentPage >= totalPages) currentPage = totalPages - 1;
         if (currentPage < 0) currentPage = 0;
     }
-    
+
     private IQueryable<StudentViewModel> GetPagedStudents()
     {
         return displayedStudents
@@ -179,7 +189,7 @@
             .Take(pageSize)
             .AsQueryable();
     }
-    
+
     private void PreviousPage()
     {
         if (currentPage > 0)
@@ -188,7 +198,7 @@
             StateHasChanged();
         }
     }
-    
+
     private void NextPage()
     {
         if (currentPage < totalPages - 1)
@@ -205,9 +215,10 @@
         public string? first_name { get; set; }
         public string? middle_name { get; set; }
         public DateOnly? birth_date { get; set; }
+        public string? age { get; set; }
         public int group_id { get; set; }
         public string? group_name { get; set; }
-        public short? discipline_id { get; set; }
+        public byte? discipline_id { get; set; }
         public string? discipline_name { get; set; }
     }
 

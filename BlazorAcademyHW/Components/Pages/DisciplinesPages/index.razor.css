@@ -1,0 +1,8 @@
+﻿::deep .disc-name
+{
+    width:50%;
+}
+::deep .number-of-lessons
+{
+    width:20%
+}

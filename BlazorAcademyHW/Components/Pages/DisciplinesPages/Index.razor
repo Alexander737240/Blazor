@@ -15,16 +15,18 @@
     <a href="disciplines/create">Create New</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Disciplines" Pagination="pagination">
-    <PropertyColumn Property="disciplines => disciplines.discipline_name" Title="Название дициплины" />
-    <PropertyColumn Property="disciplines => disciplines.number_of_lessons" Title="Количество занятий" />
+<div>
+    <QuickGrid Class="table" Items="context.Disciplines" Pagination="pagination">
+        <PropertyColumn Class="disc-name" Property="disciplines => disciplines.discipline_name" Title="Название дициплины" Sortable="true" />
+        <PropertyColumn Class="number-of-lessons" Property="disciplines => disciplines.number_of_lessons" Title="Количество занятий" Sortable="true" />
 
-    <TemplateColumn Context="discipline">
-        <a href="@($"/disciplines/edit/{discipline.discipline_id}")">Edit</a> |
-        <a href="@($"/disciplines/details/{discipline.discipline_id}")">Details</a> |
-        <a href="@($"/disciplines/delete/{discipline.discipline_id}")">Delete</a>
-    </TemplateColumn>
-</QuickGrid>
+        <TemplateColumn Context="discipline">
+            <a href="@($"/disciplines/edit/{discipline.discipline_id}")">Edit</a> |
+            <a href="@($"/disciplines/details/{discipline.discipline_id}")">Details</a> |
+            <a href="@($"/disciplines/delete/{discipline.discipline_id}")">Delete</a>
+        </TemplateColumn>
+    </QuickGrid>
+</div>
 
 <Paginator State="pagination" />
 

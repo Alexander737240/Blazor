@@ -51,9 +51,9 @@
 </div>
 
 <QuickGrid Class="table" Items="@GetPagedGroups()" TGridItem="GroupViewModel">
-    <PropertyColumn TGridItem="GroupViewModel" TProp="string?" Property="g => g.group_name" Title="Название группы" Sortable="true" />
-    <PropertyColumn TGridItem="GroupViewModel" TProp="string?" Property="g => g.discipline_name" Title="Дисциплина" Sortable="true" />
-    <PropertyColumn TGridItem="GroupViewModel" TProp="string?" Property="g => g.study_days" Title="Учебные дни" Sortable="true" />
+    <PropertyColumn Class="group-name" TGridItem="GroupViewModel" TProp="string?" Property="g => g.group_name" Title="Название группы" Sortable="true" />
+    <PropertyColumn Class="discipline-name" TGridItem="GroupViewModel" TProp="string?" Property="g => g.discipline_name" Title="Дисциплина" Sortable="true" />
+    <PropertyColumn Class="study-days" TGridItem="GroupViewModel" TProp="string?" Property="g => g.study_days" Title="Учебные дни" Sortable="true" />
 
     <TemplateColumn TGridItem="GroupViewModel" Context="group">
         <a href="@($"/groups/edit/{group.group_id}")">Edit</a> |

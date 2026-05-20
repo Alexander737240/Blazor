@@ -1,0 +1,4 @@
+﻿::deep .last-name, ::deep .first-name, ::deep .middle-name, ::deep .birth-date, ::deep .work-since, ::deep .rate
+{
+    width: 15%;
+}
